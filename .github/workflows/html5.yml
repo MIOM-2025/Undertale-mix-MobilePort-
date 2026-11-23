@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,8 +22,29 @@ jobs:
         with:
           haxe-version: 4.3.7
 
+      - name: Install system deps for lime
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq libsdl2-2.0-0 libopenal1 libvorbis0a libvorbisfile3 \
+            libgl1 libegl1 libx11-6 libxext6 libxrandr2 libxi6 libxcursor1 \
+            libxinerama1 libxxf86vm1
+
       - name: Install libraries
         run: haxe -cp commandline -D analyzer-optimize --run Main setup -s
+
+      - name: Fix lime ndll
+        run: |
+          haxelib install lime --always --quiet || true
+          echo "--- lime versions ---"
+          ls .haxelib/lime/ || true
+          REL=$(ls -d .haxelib/lime/[0-9]*/ 2>/dev/null | head -1)
+          echo "release lime: $REL"
+          if [ -n "$REL" ] && [ -d "$REL/ndll" ]; then
+            mkdir -p .haxelib/lime/git/ndll
+            cp -rn "$REL/ndll/." .haxelib/lime/git/ndll/ || true
+          fi
+          haxelib set lime git
+          ls .haxelib/lime/git/ndll/Linux64/ || true
 
       - name: Build HTML5
         run: haxelib run lime build html5 -DCOMPILE_EXPERIMENTAL
