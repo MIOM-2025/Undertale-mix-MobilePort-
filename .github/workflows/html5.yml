@@ -1,0 +1,44 @@
+name: HTML5 Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/html5.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@v2
+        with:
+          haxe-version: 4.3.7
+
+      - name: Install libraries
+        run: haxe -cp commandline -D analyzer-optimize --run Main setup -s
+
+      - name: Build HTML5
+        run: haxelib run lime build html5 -DCOMPILE_EXPERIMENTAL
+
+      - name: Show output
+        if: always()
+        run: |
+          echo "--- export tree ---"
+          find export -maxdepth 4 -type d 2>/dev/null | head -40
+          du -sh export/release/html5/bin 2>/dev/null || true
+
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codename-html5
+          path: export/release/html5/bin/
+          if-no-files-found: warn
